@@ -50,7 +50,7 @@ def linear_search(m1_values,x,y,m2):
     best_i=np.argmin(loss)
     return m1_values[best_i]
 
-def gradient_descent(x, y, m, m2, learning_rate, tolerance, prev_loss, loss, m_values, iteration, max_iterations):
+def gradient_descent(x, y, m, m2, learning_rate, tolerance,prev_loss, loss, m_values, max_iterations):
     """
     Performs gradient descent optimization recursively to find the optimal slope (m).
 
@@ -64,33 +64,30 @@ def gradient_descent(x, y, m, m2, learning_rate, tolerance, prev_loss, loss, m_v
         prev_loss (float): The previous loss value.
         loss (list): The history of loss values.
         m_values (list): The history of m values.
-        iteration (int): The current iteration count.
         max_iterations (int): The maximum number of iterations.
 
     Returns:
         tuple: (optimal m value, loss history, m value history)
     """
-    if iteration>=max_iterations:
-        return m,loss,m_values
+    for i in range(max_iterations):
+        y_pred=m*x+m2
+        #calculating gradient
+        grad=-2*np.mean(x*(y-y_pred))  
+        m-=learning_rate*grad
+        current_loss=calc_mse(m, m2, x, y)
 
-    y_pred=m*x+m2
-    #calculating gradient
-    grad=-2*np.mean(x*(y-y_pred))  
-    new_m=m-learning_rate * grad
-    current_loss=calc_mse(new_m, m2, x, y)
+        #storing the values
+        loss.append(current_loss)
+        m_values.append(m)
 
-    if iteration==0:
-        prev_loss=float('inf')
+        #early stopping implementation
+        if abs(prev_loss-current_loss)<=tolerance:
+            print(f"Early stopping at iteration {i}")
+            break
+        prev_loss=current_loss
+    return m, loss, m_values
+        
 
-    #early stopping implementation
-    if abs(prev_loss-current_loss)<=tolerance:
-        return new_m,loss+[current_loss],m_values+[new_m]
-
-    #recursive function call
-    return gradient_descent(
-        x,y,new_m,m2,learning_rate,tolerance,current_loss,
-        loss+[current_loss],m_values+[new_m],iteration+1,max_iterations
-    )
 
 def main():
     """
@@ -98,13 +95,15 @@ def main():
     """
     #data generation
     x=np.linspace(1, 10, 100)
-    y=generate_data(x, m1=9, m2=5)
+    m1=9
+    m2=5
+    y=generate_data(x, m1, m2)
 
     m1_values=np.linspace(-50, 50, 30)
 
     # Linear Search
     start=time.time()
-    best_m1=linear_search(m1_values, x, y, m2=5)
+    best_m1=linear_search(m1_values, x, y, m2)
     end=time.time()
     print(f"Best m1 value from linear search: {best_m1:.5f}")
     print(f"Time taken for Linear Search: {end - start:.5f} seconds")
@@ -112,7 +111,7 @@ def main():
     # Gradient Descent
     start=time.time()
     m_initial=np.random.randn()
-    m,loss,m_values=gradient_descent(x, y, m_initial, 5, 0.0001, 1e-2, float('inf'), [], [], 0, 300)
+    m,loss,m_values=gradient_descent(x, y, m_initial, m2, 0.0001, 1e-1,float('inf'),[], [],500)
     end=time.time()
     print(f"Estimated m from Gradient Descent: {m:.5f}")
     print(f"Time taken for Gradient Descent: {end - start:.5f} seconds")
@@ -125,7 +124,7 @@ def main():
 
     #plotting the loss function
     plt.figure(figsize=(8, 6))
-    plt.plot(m1_values, [calc_mse(m, 5, x, y) for m in m1_values], label="Loss vs m1")
+    plt.plot(m1_values, [calc_mse(m, m2, x, y) for m in m1_values], label="Loss vs m1")
     plt.xlabel('m1')
     plt.ylabel("Loss")
     plt.title("Loss Function")
